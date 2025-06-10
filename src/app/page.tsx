@@ -5,60 +5,107 @@
 import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 
+// Interfaces y tipos
+interface PriceRecord {
+  timestamp: string;
+  price: number;
+}
+
+interface FlatDataItem {
+  item: string;
+  timestamp: Date;
+  price: number;
+  hour: number;
+}
+
+interface RawData {
+  items: {
+    [key: string]: PriceRecord[];
+  };
+}
+
+// Interfaces para Plot
+interface PlotData {
+  x: any[];
+  y: any[];
+  z?: (number | null)[][];
+  type: string;
+  mode?: string;
+  name?: string;
+  colorscale?: string;
+  reversescale?: boolean;
+}
+
+interface PlotProps {
+  data: PlotData[];
+  layout: {
+    title: string;
+    xaxis: { title: string };
+    yaxis?: { title: string };
+    height: number;
+    autosize: boolean;
+  };
+  useResizeHandler: boolean;
+  style: { width: string; height: string };
+}
+
 // Carga dinámica de Plotly para que no afecte la carga inicial de la página
-const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
+const Plot = dynamic(() => import('react-plotly.js'), { ssr: false }) as React.ComponentType<PlotProps>;
 
 // --- Funciones de Ayuda para el Procesamiento de Datos ---
 
 // Función para calcular la desviación estándar (nuestra medida de volatilidad)
-const getStandardDeviation = (array) => {
+const getStandardDeviation = (array: number[]): number => {
   if (!array || array.length === 0) return 0;
   const n = array.length;
-  const mean = array.reduce((a, b) => a + b) / n;
-  return Math.sqrt(array.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / n);
+  const mean = array.reduce((a: number, b: number) => a + b) / n;
+  return Math.sqrt(array.map(x => Math.pow(x - mean, 2)).reduce((a: number, b: number) => a + b) / n);
 };
 
 export default function HomePage() {
   // --- Estados de la Aplicación ---
-  const [rawData, setRawData] = useState(null);
+  const [rawData, setRawData] = useState<FlatDataItem[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState('cocain'); // Item por defecto
 
   // --- Carga de Datos ---
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/prices_2025-23.json'); // Carga desde la carpeta public
+        const response = await fetch('/prices_2025-23.json');
         if (!response.ok) {
           throw new Error(`Error HTTP: ${response.status}`);
         }
-        const data = await response.json();
+        const data = await response.json() as RawData;
         
-        // Transformamos los datos a una estructura plana, más fácil de manejar
-        const flatData = [];
+        const flatData: FlatDataItem[] = [];
         for (const [itemName, priceHistory] of Object.entries(data.items)) {
-          priceHistory.forEach(record => {
+          priceHistory.forEach((record: PriceRecord) => {
             flatData.push({
               item: itemName,
-              timestamp: new Date(record.timestamp), // Convertir a objeto Date
+              timestamp: new Date(record.timestamp),
               price: record.price,
               hour: new Date(record.timestamp).getUTCHours()
             });
           });
         }
         
-        flatData.sort((a, b) => a.timestamp - b.timestamp); // Ordenar por fecha
+        flatData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
         setRawData(flatData);
         
-      } catch (err) {
-        setError(err.message);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('Error desconocido');
+        }
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, []); // El array vacío asegura que esto se ejecute solo una vez
+  }, []);
 
   // --- Memoización de Datos Procesados ---
   // useMemo evita recalcular en cada render, mejorando el rendimiento.
@@ -149,7 +196,7 @@ export default function HomePage() {
             value={selectedItem}
             onChange={(e) => setSelectedItem(e.target.value)}
           >
-            {[...new Set(rawData.map(d => d.item))].sort().map(item => (
+            {rawData && [...new Set(rawData.map(d => d.item))].sort().map(item => (
               <option key={item} value={item}>{item.charAt(0).toUpperCase() + item.slice(1)}</option>
             ))}
           </select>
