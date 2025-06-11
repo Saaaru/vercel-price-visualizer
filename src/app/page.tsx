@@ -44,27 +44,54 @@ interface PlotData {
   fill?: string;
   fillcolor?: string;
   line?: {color: string; width?: number};
-  marker?: {size?: number; color?: string};
+  marker?: {size?: number; color?: string; opacity?: number};
   showlegend?: boolean;
-  text?: (string | number)[];
+  text?: (string | number)[][] | (string | number)[];
   texttemplate?: string;
   textfont?: {size: number};
   hovertemplate?: string;
+  yaxis?: string;
 }
 
 interface PlotProps {
   data: PlotData[];
   layout: {
-    title: string;
-    xaxis: { title: string; type?: string };
-    yaxis?: { title: string };
+    title: string | { text: string; font?: { color: string; size: number } };
+    xaxis: { 
+      title: string | { text: string; font?: { color: string } };
+      type?: string;
+      gridcolor?: string;
+      tickfont?: { color: string };
+    };
+    yaxis?: { 
+      title: string | { text: string; font?: { color: string } };
+      gridcolor?: string;
+      tickfont?: { color: string };
+    };
+    yaxis2?: { 
+      title: string | { text: string; font?: { color: string } };
+      overlaying: string;
+      side: string;
+      gridcolor?: string;
+      tickfont?: { color: string };
+    };
     height: number;
     autosize: boolean;
     showlegend?: boolean;
     hovermode?: string;
+    plot_bgcolor?: string;
+    paper_bgcolor?: string;
+    font?: { color: string };
+    legend?: {
+      font?: { color: string };
+      bgcolor?: string;
+      bordercolor?: string;
+      borderwidth?: number;
+    };
   };
   useResizeHandler: boolean;
   style: { width: string; height: string };
+  config?: any;
 }
 
 // Carga dinámica de Plotly para que no afecte la carga inicial de la página
@@ -131,8 +158,8 @@ const getPriceRange = (data: FlatDataItem[], item: string) => {
 
 // Colores para los gráficos
 const CHART_COLORS = [
-  '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-  '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+  '#00d4ff', '#6366f1', '#10b981', '#f59e0b', '#ef4444',
+  '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', '#ec4899'
 ];
 
 export default function HomePage() {
@@ -244,8 +271,8 @@ export default function HomePage() {
           type: 'scatter',
           mode: 'lines+markers',
           name: `${selectedItem.charAt(0).toUpperCase() + selectedItem.slice(1)} (Normalizado)`,
-          line: { color: CHART_COLORS[0], width: 2 },
-          marker: { size: 4, color: CHART_COLORS[0] },
+          line: { color: CHART_COLORS[0], width: 3 },
+          marker: { size: 5, color: CHART_COLORS[0] },
           hovertemplate: `<b>%{fullData.name}</b><br>Fecha: %{x}<br>Valor Normalizado: %{y:.1f}%<br>Precio Real: ${range1.min.toFixed(4)} - ${range1.max.toFixed(4)}<extra></extra>`
         });
       }
@@ -260,8 +287,8 @@ export default function HomePage() {
           type: 'scatter',
           mode: 'lines+markers',
           name: `${selectedItem2.charAt(0).toUpperCase() + selectedItem2.slice(1)} (Normalizado)`,
-          line: { color: CHART_COLORS[1], width: 2 },
-          marker: { size: 4, color: CHART_COLORS[1] },
+          line: { color: CHART_COLORS[1], width: 3 },
+          marker: { size: 5, color: CHART_COLORS[1] },
           hovertemplate: `<b>%{fullData.name}</b><br>Fecha: %{x}<br>Valor Normalizado: %{y:.1f}%<br>Precio Real: ${range2.min.toFixed(4)} - ${range2.max.toFixed(4)}<extra></extra>`
         });
       }
@@ -274,8 +301,8 @@ export default function HomePage() {
           type: 'scatter',
           mode: 'lines+markers',
           name: `${selectedItem.charAt(0).toUpperCase() + selectedItem.slice(1)} (Eje Izq.)`,
-          line: { color: CHART_COLORS[0], width: 2 },
-          marker: { size: 4, color: CHART_COLORS[0] },
+          line: { color: CHART_COLORS[0], width: 3 },
+          marker: { size: 5, color: CHART_COLORS[0] },
           hovertemplate: '<b>%{fullData.name}</b><br>Fecha: %{x}<br>Precio: $%{y}<extra></extra>',
           yaxis: 'y'
         });
@@ -288,8 +315,8 @@ export default function HomePage() {
           type: 'scatter',
           mode: 'lines+markers',
           name: `${selectedItem2.charAt(0).toUpperCase() + selectedItem2.slice(1)} (Eje Der.)`,
-          line: { color: CHART_COLORS[1], width: 2 },
-          marker: { size: 4, color: CHART_COLORS[1] },
+          line: { color: CHART_COLORS[1], width: 3 },
+          marker: { size: 5, color: CHART_COLORS[1] },
           hovertemplate: '<b>%{fullData.name}</b><br>Fecha: %{x}<br>Precio: $%{y}<extra></extra>',
           yaxis: 'y2'
         });
@@ -303,8 +330,8 @@ export default function HomePage() {
           type: 'scatter',
           mode: 'lines+markers',
           name: selectedItem.charAt(0).toUpperCase() + selectedItem.slice(1),
-          line: { color: CHART_COLORS[0], width: 2 },
-          marker: { size: 4, color: CHART_COLORS[0] },
+          line: { color: CHART_COLORS[0], width: 3 },
+          marker: { size: 5, color: CHART_COLORS[0] },
           hovertemplate: '<b>%{fullData.name}</b><br>Fecha: %{x}<br>Precio: $%{y}<extra></extra>'
         });
       }
@@ -316,8 +343,8 @@ export default function HomePage() {
           type: 'scatter',
           mode: 'lines+markers',
           name: selectedItem2.charAt(0).toUpperCase() + selectedItem2.slice(1),
-          line: { color: CHART_COLORS[1], width: 2 },
-          marker: { size: 4, color: CHART_COLORS[1] },
+          line: { color: CHART_COLORS[1], width: 3 },
+          marker: { size: 5, color: CHART_COLORS[1] },
           hovertemplate: '<b>%{fullData.name}</b><br>Fecha: %{x}<br>Precio: $%{y}<extra></extra>'
         });
       }
@@ -343,7 +370,7 @@ export default function HomePage() {
           type: 'scatter',
           mode: 'lines+markers',
           name: `${item.charAt(0).toUpperCase() + item.slice(1)} (Promedio Diario)`,
-          line: { color: CHART_COLORS[index % CHART_COLORS.length], width: 2 },
+          line: { color: CHART_COLORS[index % CHART_COLORS.length], width: 3 },
           marker: { size: 6, color: CHART_COLORS[index % CHART_COLORS.length] },
           hovertemplate: '<b>%{fullData.name}</b><br>Fecha: %{x}<br>Precio Promedio: $%{y:.2f}<extra></extra>'
         } as PlotData;
@@ -361,7 +388,7 @@ export default function HomePage() {
             type: 'scatter',
             mode: 'markers',
             name: `${item.charAt(0).toUpperCase() + item.slice(1)} (Datos)`,
-            marker: { size: 3, color: CHART_COLORS[index % CHART_COLORS.length], opacity: 0.6 },
+            marker: { size: 4, color: CHART_COLORS[index % CHART_COLORS.length], opacity: 0.6 },
             hovertemplate: '<b>%{fullData.name}</b><br>Fecha: %{x}<br>Precio: $%{y}<extra></extra>'
           } as PlotData,
           // Media móvil
@@ -371,7 +398,7 @@ export default function HomePage() {
             type: 'scatter',
             mode: 'lines',
             name: `${item.charAt(0).toUpperCase() + item.slice(1)} (Tendencia)`,
-            line: { color: CHART_COLORS[index % CHART_COLORS.length], width: 3 },
+            line: { color: CHART_COLORS[index % CHART_COLORS.length], width: 4 },
             hovertemplate: '<b>%{fullData.name}</b><br>Fecha: %{x}<br>Media Móvil: $%{y:.2f}<extra></extra>'
           } as PlotData
         ];
@@ -430,9 +457,64 @@ export default function HomePage() {
     };
   }, [rawData, timeRange]);
 
+  // Función para obtener layout de Plotly con tema oscuro
+  const getPlotLayout = (title: string, xAxisTitle: string, yAxisTitle: string = 'Precio ($)', isDual: boolean = false) => {
+    const baseLayout = {
+      title: {
+        text: title,
+        font: { color: '#ffffff', size: 18 }
+      },
+      xaxis: { 
+        title: { text: xAxisTitle, font: { color: '#94a3b8' } },
+        type: 'date' as const,
+        gridcolor: '#334155',
+        tickfont: { color: '#94a3b8' }
+      },
+      yaxis: { 
+        title: { text: yAxisTitle, font: { color: '#94a3b8' } },
+        gridcolor: '#334155',
+        tickfont: { color: '#94a3b8' }
+      },
+      height: 500,
+      autosize: true,
+      hovermode: 'x unified' as const,
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      font: { color: '#ffffff' },
+      showlegend: true,
+      legend: {
+        font: { color: '#94a3b8' },
+        bgcolor: 'rgba(26, 31, 46, 0.8)',
+        bordercolor: '#334155',
+        borderwidth: 1
+      }
+    };
+
+    if (isDual) {
+      return {
+        ...baseLayout,
+        yaxis2: {
+          title: { text: 'Precio ($)', font: { color: '#94a3b8' } },
+          overlaying: 'y',
+          side: 'right',
+          gridcolor: '#334155',
+          tickfont: { color: '#94a3b8' }
+        }
+      };
+    }
+
+    return baseLayout;
+  };
+
   // --- Renderizado de la UI ---
   if (loading) return <article aria-busy="true">Cargando datos...</article>;
-  if (error) return <article><h2>Error</h2><p>{error}</p></article>;
+  
+  if (error) return (
+    <article className="error-message">
+      <h2>Error al cargar los datos</h2>
+      <p>{error}</p>
+    </article>
+  );
 
   const availableDays = rawData ? [...new Set(rawData.map(d => d.day))].sort() : [];
   const availableItems = rawData ? [...new Set(rawData.map(d => d.item))].sort() : [];
@@ -441,16 +523,19 @@ export default function HomePage() {
     <>
       <header>
         <h1>Dashboard de Precios del Juego</h1>
-        <p>Análisis interactivo de la economía del juego con visualizaciones avanzadas.</p>
+        <p>Análisis interactivo de la economía del juego con visualizaciones avanzadas</p>
       </header>
 
-      {/* --- Gráfico 1: Evolución de Precio Mejorado --- */}
-      <article>
-        <header>
-          <h2>Evolución de Precio por Item</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-            <div>
-              <label htmlFor="date-range-select">Rango de fechas:</label>
+      <main>
+        {/* --- Gráfico 1: Evolución de Precio Mejorado --- */}
+        <article className="glow">
+          <header>
+            <h2>Evolución de Precio por Item</h2>
+          </header>
+          
+          <div className="controls-grid">
+            <div className="control-group">
+              <label htmlFor="date-range-select">Rango de fechas</label>
               <select
                 id="date-range-select"
                 value={dateRange}
@@ -463,8 +548,8 @@ export default function HomePage() {
             </div>
             
             {dateRange === 'single' && (
-              <div>
-                <label htmlFor="day-select">Día:</label>
+              <div className="control-group">
+                <label htmlFor="day-select">Día</label>
                 <select
                   id="day-select"
                   value={selectedDay}
@@ -479,8 +564,8 @@ export default function HomePage() {
             
             {dateRange === 'range' && (
               <>
-                <div>
-                  <label htmlFor="start-date">Fecha inicio:</label>
+                <div className="control-group">
+                  <label htmlFor="start-date">Fecha inicio</label>
                   <select
                     id="start-date"
                     value={startDate}
@@ -491,8 +576,8 @@ export default function HomePage() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label htmlFor="end-date">Fecha fin:</label>
+                <div className="control-group">
+                  <label htmlFor="end-date">Fecha fin</label>
                   <select
                     id="end-date"
                     value={endDate}
@@ -506,8 +591,8 @@ export default function HomePage() {
               </>
             )}
             
-            <div>
-              <label htmlFor="item-select">Item 1:</label>
+            <div className="control-group">
+              <label htmlFor="item-select">Item Principal</label>
               <select
                 id="item-select"
                 value={selectedItem}
@@ -519,8 +604,8 @@ export default function HomePage() {
               </select>
             </div>
             
-            <div>
-              <label htmlFor="item-select-2">Item 2 (opcional):</label>
+            <div className="control-group">
+              <label htmlFor="item-select-2">Item Secundario</label>
               <select
                 id="item-select-2"
                 value={selectedItem2}
@@ -532,143 +617,187 @@ export default function HomePage() {
                 ))}
               </select>
             </div>
-          </div>
-        </header>
-        <Plot
-          data={priceEvolutionData}
-          layout={{
-            title: `Evolución de Precios - ${dateRange === 'single' ? selectedDay : dateRange === 'range' ? `${startDate} a ${endDate}` : 'Todos los días'}`,
-            xaxis: { title: 'Fecha y Hora', type: 'date' },
-            yaxis: { title: 'Precio ($)' },
-            height: 500,
-            autosize: true,
-            hovermode: 'x unified'
-          }}
-          useResizeHandler={true}
-          style={{ width: '100%', height: '100%' }}
-        />
-      </article>
 
-      {/* --- Gráfico 2: Análisis Histórico de Variación --- */}
-      <article>
-        <header>
-          <h2>Análisis Histórico de Variación</h2>
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ marginBottom: '1rem' }}>
-              <label>Tipo de análisis:</label>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <div className="control-group">
+              <label>Modo de Visualización</label>
+              <div className="radio-group">
+                <div className="radio-item">
                   <input
                     type="radio"
+                    id="linear"
+                    value="linear"
+                    checked={yAxisMode === 'linear'}
+                    onChange={(e) => setYAxisMode(e.target.value)}
+                  />
+                  <label htmlFor="linear">Lineal</label>
+                </div>
+                <div className="radio-item">
+                  <input
+                    type="radio"
+                    id="dual"
+                    value="dual"
+                    checked={yAxisMode === 'dual'}
+                    onChange={(e) => setYAxisMode(e.target.value)}
+                  />
+                  <label htmlFor="dual">Dual</label>
+                </div>
+                <div className="radio-item">
+                  <input
+                    type="radio"
+                    id="normalized"
+                    value="normalized"
+                    checked={yAxisMode === 'normalized'}
+                    onChange={(e) => setYAxisMode(e.target.value)}
+                  />
+                  <label htmlFor="normalized">Normalizado</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="plot-container">
+            <Plot
+              data={priceEvolutionData}
+              layout={getPlotLayout(
+                `Evolución de Precios - ${dateRange === 'single' ? selectedDay : dateRange === 'range' ? `${startDate} a ${endDate}` : 'Todos los días'}`,
+                'Fecha y Hora',
+                yAxisMode === 'normalized' ? 'Valor Normalizado (%)' : 'Precio ($)',
+                yAxisMode === 'dual'
+              )}
+              useResizeHandler={true}
+              style={{ width: '100%', height: '100%' }}
+              config={{ displayModeBar: false }}
+            />
+          </div>
+        </article>
+
+        {/* --- Gráfico 2: Análisis Histórico de Variación --- */}
+        <article className="glow">
+          <header>
+            <h2>Análisis Histórico de Variación</h2>
+          </header>
+          
+          <div className="controls-grid">
+            <div className="control-group">
+              <label>Tipo de análisis</label>
+              <div className="radio-group">
+                <div className="radio-item">
+                  <input
+                    type="radio"
+                    id="daily"
                     value="daily"
                     checked={trendAnalysisType === 'daily'}
                     onChange={(e) => setTrendAnalysisType(e.target.value)}
                   />
-                  Promedio Diario
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <label htmlFor="daily">Promedio Diario</label>
+                </div>
+                <div className="radio-item">
                   <input
                     type="radio"
+                    id="hourly"
                     value="hourly"
                     checked={trendAnalysisType === 'hourly'}
                     onChange={(e) => setTrendAnalysisType(e.target.value)}
                   />
-                  Datos por Hora + Tendencia
-                </label>
+                  <label htmlFor="hourly">Datos por Hora + Tendencia</label>
+                </div>
               </div>
             </div>
             
-            <label>Selecciona los items a analizar:</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
-              {availableItems.map(item => (
-                <label key={item} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedItemsForTrends.includes(item)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedItemsForTrends([...selectedItemsForTrends, item]);
-                      } else {
-                        setSelectedItemsForTrends(selectedItemsForTrends.filter(i => i !== item));
-                      }
-                    }}
-                  />
-                  {item.charAt(0).toUpperCase() + item.slice(1)}
-                </label>
-              ))}
-            </div>
-          </div>
-        </header>
-        <Plot
-          data={historicalAnalysisData}
-          layout={{
-            title: `Análisis de Tendencias - ${trendAnalysisType === 'daily' ? 'Promedio Diario' : 'Datos Horarios con Tendencia'}`,
-            xaxis: { title: trendAnalysisType === 'daily' ? 'Fecha' : 'Fecha y Hora', type: 'date' },
-            yaxis: { title: 'Precio ($)' },
-            height: 500,
-            autosize: true,
-            showlegend: true,
-            hovermode: 'x unified'
-          }}
-          useResizeHandler={true}
-          style={{ width: '100%', height: '100%' }}
-        />
-      </article>
-
-      {/* --- Gráfico 3: Mapa de Calor Mejorado --- */}
-      {heatmapData && (
-        <article>
-          <header>
-            <h2>Mapa de Calor de Precios por Hora</h2>
-            <div style={{ marginBottom: '1rem' }}>
-              <label>Rango de horas:</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
-                <input
-                  type="number"
-                  min="0"
-                  max="23"
-                  value={timeRange[0]}
-                  onChange={(e) => setTimeRange([parseInt(e.target.value), timeRange[1]])}
-                />
-                <span>a</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="23"
-                  value={timeRange[1]}
-                  onChange={(e) => setTimeRange([timeRange[0], parseInt(e.target.value)])}
-                />
-                <span style={{ fontSize: '0.9em', color: '#666' }}>
-                  (Los valores se muestran directamente en cada celda)
-                </span>
+            <div className="control-group">
+              <label>Items a analizar</label>
+              <div className="checkbox-group">
+                {availableItems.map(item => (
+                  <div key={item} className="checkbox-item">
+                    <input
+                      type="checkbox"
+                      id={`trend-${item}`}
+                      checked={selectedItemsForTrends.includes(item)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedItemsForTrends([...selectedItemsForTrends, item]);
+                        } else {
+                          setSelectedItemsForTrends(selectedItemsForTrends.filter(i => i !== item));
+                        }
+                      }}
+                    />
+                    <label htmlFor={`trend-${item}`}>{item.charAt(0).toUpperCase() + item.slice(1)}</label>
+                  </div>
+                ))}
               </div>
             </div>
-          </header>
-          <Plot
-            data={[{
-              x: heatmapData.x,
-              y: heatmapData.y,
-              z: heatmapData.z,
-              text: heatmapData.text,
-              texttemplate: "%{text}",
-              textfont: { size: 10 },
-              type: 'heatmap',
-              colorscale: 'Viridis',
-              reversescale: true,
-              hovertemplate: '<b>%{y}</b><br>Hora: %{x}:00<br>Precio Promedio: $%{z}<extra></extra>'
-            }]}
-            layout={{
-              title: 'Mapa de Calor de Precios Promedio por Hora',
-              xaxis: { title: 'Hora del Día (UTC)' },
-              yaxis: { title: 'Items' },
-              height: 600,
-              autosize: true
-            }}
-            useResizeHandler={true}
-            style={{ width: '100%', height: '100%' }}
-          />
+          </div>
+
+          <div className="plot-container">
+            <Plot
+              data={historicalAnalysisData}
+              layout={getPlotLayout(
+                `Análisis de Tendencias - ${trendAnalysisType === 'daily' ? 'Promedio Diario' : 'Datos Horarios con Tendencia'}`,
+                trendAnalysisType === 'daily' ? 'Fecha' : 'Fecha y Hora'
+              )}
+              useResizeHandler={true}
+              style={{ width: '100%', height: '100%' }}
+              config={{ displayModeBar: false }}
+            />
+          </div>
         </article>
-      )}
+
+        {/* --- Gráfico 3: Mapa de Calor Mejorado --- */}
+        {heatmapData && (
+          <article className="glow">
+            <header>
+              <h2>Mapa de Calor de Precios por Hora</h2>
+            </header>
+            
+            <div className="controls-grid">
+              <div className="control-group">
+                <label>Rango de horas</label>
+                <div className="range-controls">
+                  <input
+                    type="number"
+                    min="0"
+                    max="23"
+                    value={timeRange[0]}
+                    onChange={(e) => setTimeRange([parseInt(e.target.value), timeRange[1]])}
+                  />
+                  <span>a</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="23"
+                    value={timeRange[1]}
+                    onChange={(e) => setTimeRange([timeRange[0], parseInt(e.target.value)])}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="plot-container">
+              <Plot
+                data={[{
+                  x: heatmapData.x,
+                  y: heatmapData.y,
+                  z: heatmapData.z,
+                  text: heatmapData.text,
+                  texttemplate: "%{text}",
+                  textfont: { size: 10 },
+                  type: 'heatmap',
+                  colorscale: 'Viridis',
+                  reversescale: true,
+                  hovertemplate: '<b>%{y}</b><br>Hora: %{x}:00<br>Precio Promedio: $%{z}<extra></extra>'
+                }]}
+                layout={{
+                  ...getPlotLayout('Mapa de Calor de Precios Promedio por Hora', 'Hora del Día (UTC)', 'Items'),
+                  height: 600
+                }}
+                useResizeHandler={true}
+                style={{ width: '100%', height: '100%' }}
+                config={{ displayModeBar: false }}
+              />
+            </div>
+          </article>
+        )}
+      </main>
     </>
   );
 }
