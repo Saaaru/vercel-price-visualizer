@@ -83,4 +83,40 @@ function getWeeklyFileName(): string {
   endOfWeek.setDate(startOfWeek.getDate() + 6); // Sábado
   
   return `prices_${startOfWeek.toISOString().split('T')[0]}_to_${endOfWeek.toISOString().split('T')[0]}.json`;
+}
+
+// Función para obtener datos de la API
+export async function fetchPricesFromAPI(): Promise<RawData> {
+  try {
+    const response = await fetch('/api/prices');
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
+    const data = await response.json() as RawData;
+    
+    // Procesar y redondear los precios
+    const processedData: RawData = { items: {} };
+    for (const [item, prices] of Object.entries(data.items)) {
+      processedData.items[item] = prices.map((record: PriceRecord) => ({
+        ...record,
+        price: roundToTwo(record.price)
+      }));
+    }
+    
+    return processedData;
+  } catch (error) {
+    console.error('Error al obtener datos de la API:', error);
+    throw error;
+  }
+}
+
+// Función para cargar datos semanales
+export async function loadWeeklyPrices(): Promise<RawData> {
+  try {
+    const weeklyFile = getWeeklyFileName();
+    return await loadPricesFromFile(weeklyFile);
+  } catch (error) {
+    console.error('Error al cargar datos semanales:', error);
+    throw error;
+  }
 } 
