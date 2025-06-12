@@ -47,9 +47,13 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = API_C
 export async function fetchPricesFromAPI(): Promise<RawData> {
   try {
     console.log('Iniciando petición a la API...');
-    const response = await fetchWithRetry(API_CONFIG.baseUrl, {
+    // Usar la API Route interna
+    const response = await fetchWithRetry('/api/prices', {
       method: 'GET',
-      headers: API_CONFIG.headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
     });
     
     const apiData = await response.json() as APIResponse;
@@ -80,6 +84,17 @@ export async function fetchPricesFromAPI(): Promise<RawData> {
   }
 }
 
+// Función para obtener el nombre de la clave semanal
+function getWeeklyKey(): string {
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay()); // Domingo
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6); // Sábado
+  
+  return `prices_${startOfWeek.toISOString().split('T')[0]}_to_${endOfWeek.toISOString().split('T')[0]}`;
+}
+
 // Función para cargar datos del localStorage
 export async function loadWeeklyPrices(): Promise<RawData> {
   try {
@@ -99,17 +114,6 @@ export async function loadWeeklyPrices(): Promise<RawData> {
     console.error('Error al cargar datos semanales:', error);
     return { items: {} };
   }
-}
-
-// Función para obtener el nombre de la clave semanal
-function getWeeklyKey(): string {
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay()); // Domingo
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6); // Sábado
-  
-  return `prices_${startOfWeek.toISOString().split('T')[0]}_to_${endOfWeek.toISOString().split('T')[0]}`;
 }
 
 // Función para guardar datos en localStorage
