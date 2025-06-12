@@ -1,3 +1,5 @@
+import { API_CONFIG } from '@/config/api.config';
+
 // Interfaces
 interface PriceRecord {
   timestamp: string;
@@ -18,34 +20,46 @@ interface APIResponse {
   };
 }
 
-// Función para obtener el nombre de la clave semanal
-function getWeeklyKey(): string {
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay()); // Domingo
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6); // Sábado
-  
-  return `prices_${startOfWeek.toISOString().split('T')[0]}_to_${endOfWeek.toISOString().split('T')[0]}`;
-}
-
 // Función para redondear a 2 decimales
 const roundToTwo = (num: number): number => {
   return Math.round(num * 100) / 100;
 };
 
+// Función para obtener datos de la API con reintentos
+async function fetchWithRetry(url: string, options: RequestInit, retries = API_CONFIG.maxRetries): Promise<Response> {
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response;
+  } catch (error) {
+    if (retries > 0) {
+      console.log(`Reintentando petición... (${retries} intentos restantes)`);
+      await new Promise(resolve => setTimeout(resolve, API_CONFIG.retryDelay));
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    throw error;
+  }
+}
+
 // Función para obtener datos de la API
 export async function fetchPricesFromAPI(): Promise<RawData> {
   try {
-    const response = await fetch('https://api2.warera.io/trpc/itemTrading.getPrices');
-    if (!response.ok) {
-      throw new Error(`Error HTTP: ${response.status}`);
-    }
+    console.log('Iniciando petición a la API...');
+    const response = await fetchWithRetry(API_CONFIG.baseUrl, {
+      method: 'GET',
+      headers: API_CONFIG.headers,
+    });
     
     const apiData = await response.json() as APIResponse;
-    const currentTimestamp = new Date().toISOString();
+    console.log('Datos recibidos de la API:', apiData);
     
-    // Convertir el formato de la API al formato que necesitamos
+    if (!apiData || !apiData.result || !apiData.result.data) {
+      throw new Error('Formato de respuesta inválido');
+    }
+    
+    const currentTimestamp = new Date().toISOString();
     const rawData: RawData = {
       items: {}
     };
@@ -58,6 +72,7 @@ export async function fetchPricesFromAPI(): Promise<RawData> {
       }];
     }
     
+    console.log('Datos procesados:', rawData);
     return rawData;
   } catch (error) {
     console.error('Error al obtener datos de la API:', error);
@@ -84,6 +99,17 @@ export async function loadWeeklyPrices(): Promise<RawData> {
     console.error('Error al cargar datos semanales:', error);
     return { items: {} };
   }
+}
+
+// Función para obtener el nombre de la clave semanal
+function getWeeklyKey(): string {
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay()); // Domingo
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6); // Sábado
+  
+  return `prices_${startOfWeek.toISOString().split('T')[0]}_to_${endOfWeek.toISOString().split('T')[0]}`;
 }
 
 // Función para guardar datos en localStorage
@@ -126,14 +152,14 @@ export async function saveWeeklyPrices(newData: RawData): Promise<void> {
   }
 }
 
-// Función para actualizar datos cada hora
+// Función para actualizar datos periódicamente
 export async function startPriceUpdates(): Promise<void> {
   try {
     // Obtener datos iniciales
     const data = await fetchPricesFromAPI();
     await saveWeeklyPrices(data);
     
-    // Configurar actualización cada hora
+    // Configurar actualización periódica
     setInterval(async () => {
       try {
         const newData = await fetchPricesFromAPI();
@@ -142,7 +168,7 @@ export async function startPriceUpdates(): Promise<void> {
       } catch (error) {
         console.error('Error en la actualización automática:', error);
       }
-    }, 60 * 60 * 1000); // 1 hora en milisegundos
+    }, API_CONFIG.updateInterval);
   } catch (error) {
     console.error('Error al iniciar las actualizaciones:', error);
     throw error;
