@@ -1,5 +1,3 @@
-import { API_CONFIG } from '@/config/api.config';
-
 // Interfaces
 interface PriceRecord {
   timestamp: string;
@@ -12,169 +10,77 @@ interface RawData {
   };
 }
 
-interface APIResponse {
-  result: {
-    data: {
-      [key: string]: number;
-    };
-  };
-}
-
 // Función para redondear a 2 decimales
 const roundToTwo = (num: number): number => {
   return Math.round(num * 100) / 100;
 };
 
-// Función para obtener datos de la API con reintentos
-async function fetchWithRetry(url: string, options: RequestInit, retries = API_CONFIG.maxRetries): Promise<Response> {
+// Función para obtener la lista de archivos JSON disponibles
+export async function getAvailableFiles(): Promise<string[]> {
   try {
-    const response = await fetch(url, options);
+    const response = await fetch('/api/files');
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(`Error HTTP: ${response.status}`);
     }
-    return response;
+    return await response.json();
   } catch (error) {
-    if (retries > 0) {
-      console.log(`Reintentando petición... (${retries} intentos restantes)`);
-      await new Promise(resolve => setTimeout(resolve, API_CONFIG.retryDelay));
-      return fetchWithRetry(url, options, retries - 1);
-    }
-    throw error;
+    console.error('Error al obtener lista de archivos:', error);
+    return [];
   }
 }
 
-// Función para obtener datos de la API
-export async function fetchPricesFromAPI(): Promise<RawData> {
+// Función para cargar datos de un archivo JSON específico
+export async function loadPricesFromFile(filename: string): Promise<RawData> {
   try {
-    console.log('Iniciando petición a la API...');
-    // Usar la API Route interna
-    const response = await fetchWithRetry('/api/prices', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    });
-    
-    const apiData = await response.json() as APIResponse;
-    console.log('Datos recibidos de la API:', apiData);
-    
-    if (!apiData || !apiData.result || !apiData.result.data) {
-      throw new Error('Formato de respuesta inválido');
+    const response = await fetch(`/data/${filename}`);
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
     }
-    
-    const currentTimestamp = new Date().toISOString();
-    const rawData: RawData = {
-      items: {}
-    };
-    
-    // Para cada item en la respuesta de la API
-    for (const [item, price] of Object.entries(apiData.result.data)) {
-      rawData.items[item] = [{
-        timestamp: currentTimestamp,
-        price: roundToTwo(price)
-      }];
-    }
-    
-    console.log('Datos procesados:', rawData);
-    return rawData;
+    return await response.json();
   } catch (error) {
-    console.error('Error al obtener datos de la API:', error);
+    console.error(`Error al cargar datos del archivo ${filename}:`, error);
     throw error;
   }
 }
 
-// Función para obtener el nombre de la clave semanal
-function getWeeklyKey(): string {
+// Función para cargar datos de múltiples archivos
+export async function loadMultipleFiles(filenames: string[]): Promise<RawData> {
+  try {
+    const allData: RawData = { items: {} };
+    
+    for (const filename of filenames) {
+      const fileData = await loadPricesFromFile(filename);
+      
+      // Combinar datos de cada archivo
+      for (const [item, prices] of Object.entries(fileData.items)) {
+        if (!allData.items[item]) {
+          allData.items[item] = [];
+        }
+        allData.items[item] = [...allData.items[item], ...prices];
+      }
+    }
+    
+    // Ordenar todos los precios por timestamp
+    for (const item in allData.items) {
+      allData.items[item].sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+    }
+    
+    return allData;
+  } catch (error) {
+    console.error('Error al cargar múltiples archivos:', error);
+    throw error;
+  }
+}
+
+// Función para obtener el nombre del archivo semanal
+function getWeeklyFileName(): string {
   const now = new Date();
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - now.getDay()); // Domingo
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 6); // Sábado
   
-  return `prices_${startOfWeek.toISOString().split('T')[0]}_to_${endOfWeek.toISOString().split('T')[0]}`;
-}
-
-// Función para cargar datos del localStorage
-export async function loadWeeklyPrices(): Promise<RawData> {
-  try {
-    if (typeof window === 'undefined') {
-      return { items: {} };
-    }
-
-    const weeklyKey = getWeeklyKey();
-    const storedData = localStorage.getItem(weeklyKey);
-    
-    if (!storedData) {
-      return { items: {} };
-    }
-    
-    return JSON.parse(storedData);
-  } catch (error) {
-    console.error('Error al cargar datos semanales:', error);
-    return { items: {} };
-  }
-}
-
-// Función para guardar datos en localStorage
-export async function saveWeeklyPrices(newData: RawData): Promise<void> {
-  try {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const weeklyKey = getWeeklyKey();
-    const existingData = await loadWeeklyPrices();
-    
-    // Combinar datos existentes con nuevos datos
-    const combinedData: RawData = {
-      items: { ...existingData.items }
-    };
-    
-    // Para cada item en los nuevos datos
-    for (const [item, newPrices] of Object.entries(newData.items)) {
-      if (!combinedData.items[item]) {
-        combinedData.items[item] = [];
-      }
-      
-      // Agregar nuevos precios al historial
-      combinedData.items[item] = [
-        ...combinedData.items[item],
-        ...newPrices
-      ];
-      
-      // Ordenar por timestamp
-      combinedData.items[item].sort((a, b) => 
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-      );
-    }
-    
-    // Guardar datos combinados
-    localStorage.setItem(weeklyKey, JSON.stringify(combinedData));
-  } catch (error) {
-    console.error('Error al guardar datos semanales:', error);
-  }
-}
-
-// Función para actualizar datos periódicamente
-export async function startPriceUpdates(): Promise<void> {
-  try {
-    // Obtener datos iniciales
-    const data = await fetchPricesFromAPI();
-    await saveWeeklyPrices(data);
-    
-    // Configurar actualización periódica
-    setInterval(async () => {
-      try {
-        const newData = await fetchPricesFromAPI();
-        await saveWeeklyPrices(newData);
-        console.log('Datos actualizados:', new Date().toISOString());
-      } catch (error) {
-        console.error('Error en la actualización automática:', error);
-      }
-    }, API_CONFIG.updateInterval);
-  } catch (error) {
-    console.error('Error al iniciar las actualizaciones:', error);
-    throw error;
-  }
+  return `prices_${startOfWeek.toISOString().split('T')[0]}_to_${endOfWeek.toISOString().split('T')[0]}.json`;
 } 
