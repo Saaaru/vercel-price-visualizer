@@ -4,6 +4,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import { fetchPricesFromAPI, loadWeeklyPrices } from '@/lib/api';
+import { API_CONFIG } from '@/config/api.config';
 
 // Interfaces y tipos
 interface PriceRecord {
@@ -23,6 +25,31 @@ interface RawData {
   items: {
     [key: string]: PriceRecord[];
   };
+}
+
+// Agregar tipos para las estadísticas diarias
+interface DailyStats {
+  day: string;
+  avg: number;
+  min: number;
+  max: number;
+  std: number;
+  count: number;
+}
+
+// Agregar tipos para el rango de precios
+interface PriceRange {
+  min: number;
+  max: number;
+  avg: number;
+}
+
+// Agregar tipos para los datos del mapa de calor
+interface HeatmapData {
+  x: number[];
+  y: string[];
+  z: (number | null)[][];
+  text: string[][];
 }
 
 // Interfaces para Plot
@@ -102,38 +129,55 @@ const Plot = dynamic(() => import('react-plotly.js'), { ssr: false }) as React.C
 // Función para calcular la desviación estándar (nuestra medida de volatilidad)
 const getStandardDeviation = (array: number[]): number => {
   if (!array || array.length === 0) return 0;
-  const n = array.length;
-  const mean = array.reduce((a: number, b: number) => a + b) / n;
-  return Math.sqrt(array.map(x => Math.pow(x - mean, 2)).reduce((a: number, b: number) => a + b) / n);
+  try {
+    const n = array.length;
+    const mean = array.reduce((a: number, b: number) => a + b) / n;
+    return Math.sqrt(array.map(x => Math.pow(x - mean, 2)).reduce((a: number, b: number) => a + b) / n);
+  } catch (error) {
+    console.error('Error al calcular la desviación estándar:', error);
+    return 0;
+  }
 };
 
 // Función para calcular media móvil
 const getMovingAverage = (data: number[], windowSize: number): number[] => {
-  const result = [];
-  for (let i = windowSize - 1; i < data.length; i++) {
-    const window = data.slice(i - windowSize + 1, i + 1);
-    const avg = window.reduce((a, b) => a + b) / windowSize;
-    result.push(avg);
+  if (!data || data.length === 0 || windowSize <= 0) return [];
+  try {
+    const result = [];
+    for (let i = windowSize - 1; i < data.length; i++) {
+      const window = data.slice(i - windowSize + 1, i + 1);
+      const avg = window.reduce((a, b) => a + b) / windowSize;
+      result.push(avg);
+    }
+    return result;
+  } catch (error) {
+    console.error('Error al calcular la media móvil:', error);
+    return [];
   }
-  return result;
 };
 
 // Función para obtener estadísticas por día
-const getDailyStats = (data: FlatDataItem[]) => {
-  const dailyGroups = data.reduce((acc, item) => {
-    if (!acc[item.day]) acc[item.day] = [];
-    acc[item.day].push(item.price);
-    return acc;
-  }, {} as Record<string, number[]>);
+const getDailyStats = (data: FlatDataItem[]): DailyStats[] => {
+  if (!data || data.length === 0) return [];
+  try {
+    const dailyGroups = data.reduce((acc, item) => {
+      if (!acc[item.day]) acc[item.day] = [];
+      acc[item.day].push(item.price);
+      return acc;
+    }, {} as Record<string, number[]>);
 
-  return Object.entries(dailyGroups).map(([day, prices]) => ({
-    day,
-    avg: prices.reduce((a, b) => a + b) / prices.length,
-    min: Math.min(...prices),
-    max: Math.max(...prices),
-    std: getStandardDeviation(prices),
-    count: prices.length
-  }));
+    return Object.entries(dailyGroups).map(([day, prices]) => ({
+      day,
+      avg: prices.reduce((a, b) => a + b) / prices.length,
+      min: Math.min(...prices),
+      max: Math.max(...prices),
+      std: getStandardDeviation(prices),
+      count: prices.length
+    }));
+  } catch (error) {
+    console.error('Error al calcular estadísticas diarias:', error);
+    return [];
+  }
 };
 
 // Función para normalizar datos (0-100)
@@ -182,47 +226,112 @@ export default function HomePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/prices_2025-23.json');
-        if (!response.ok) {
-          throw new Error(`Error HTTP: ${response.status}`);
+        setLoading(true);
+        setError(null);
+        
+        let data: RawData;
+        try {
+          data = await loadWeeklyPrices();
+        } catch (error) {
+          console.warn('No se encontraron datos semanales, obteniendo de la API:', error);
+          data = await fetchPricesFromAPI();
         }
-        const data = await response.json() as RawData;
+        
+        if (!data || !data.items) {
+          throw new Error('Datos inválidos recibidos de la API');
+        }
         
         const flatData: FlatDataItem[] = [];
         for (const [itemName, priceHistory] of Object.entries(data.items)) {
+          if (!Array.isArray(priceHistory)) {
+            console.warn(`Historial de precios inválido para ${itemName}`);
+            continue;
+          }
+          
           priceHistory.forEach((record: PriceRecord) => {
-            const date = new Date(record.timestamp);
-            flatData.push({
-              item: itemName,
-              timestamp: date,
-              price: record.price,
-              hour: date.getUTCHours(),
-              day: date.toISOString().split('T')[0]
-            });
+            try {
+              const date = new Date(record.timestamp);
+              if (isNaN(date.getTime())) {
+                throw new Error(`Timestamp inválido: ${record.timestamp}`);
+              }
+              
+              flatData.push({
+                item: itemName,
+                timestamp: date,
+                price: Number(record.price),
+                hour: date.getUTCHours(),
+                day: date.toISOString().split('T')[0]
+              });
+            } catch (error) {
+              console.error(`Error procesando registro para ${itemName}:`, error);
+            }
           });
+        }
+        
+        if (flatData.length === 0) {
+          throw new Error('No se encontraron datos válidos para procesar');
         }
         
         flatData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
         setRawData(flatData);
         
-        // Establecer fechas por defecto
-        if (flatData.length > 0) {
-          const days = [...new Set(flatData.map(d => d.day))].sort();
+        const days = [...new Set(flatData.map(d => d.day))].sort();
+        if (days.length > 0) {
           setSelectedDay(days[0]);
           setStartDate(days[0]);
           setEndDate(days[days.length - 1]);
         }
       } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError('Error desconocido');
-        }
+        const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cargar datos';
+        setError(errorMessage);
+        console.error('Error en fetchData:', err);
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
+
+    // Mejorar el intervalo de actualización
+    const updateInterval = setInterval(async () => {
+      try {
+        const newData = await fetchPricesFromAPI();
+        if (!newData || !newData.items) {
+          throw new Error('Datos inválidos recibidos de la API');
+        }
+
+        const flatData: FlatDataItem[] = [];
+        for (const [itemName, priceHistory] of Object.entries(newData.items)) {
+          if (!Array.isArray(priceHistory)) continue;
+          
+          priceHistory.forEach((record: PriceRecord) => {
+            try {
+              const date = new Date(record.timestamp);
+              if (isNaN(date.getTime())) return;
+              
+              flatData.push({
+                item: itemName,
+                timestamp: date,
+                price: Number(record.price),
+                hour: date.getUTCHours(),
+                day: date.toISOString().split('T')[0]
+              });
+            } catch (error) {
+              console.error(`Error procesando actualización para ${itemName}:`, error);
+            }
+          });
+        }
+
+        if (flatData.length > 0) {
+          flatData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+          setRawData(flatData);
+        }
+      } catch (error) {
+        console.error('Error en la actualización automática:', error);
+      }
+    }, API_CONFIG.updateInterval);
+
+    return () => clearInterval(updateInterval);
   }, []);
 
   // --- Función para filtrar datos por rango de fechas ---
