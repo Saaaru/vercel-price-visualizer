@@ -221,6 +221,7 @@ export default function HomePage() {
   const [endDate, setEndDate] = useState<string>('');
   const [trendAnalysisType, setTrendAnalysisType] = useState<string>('daily'); // 'daily', 'hourly'
   const [yAxisMode, setYAxisMode] = useState<string>('linear'); // 'linear', 'log', 'dual', 'normalized'
+  const [currentPrices, setCurrentPrices] = useState<{[key: string]: number}>({});
 
   // --- Carga de Datos ---
   useEffect(() => {
@@ -228,6 +229,18 @@ export default function HomePage() {
       try {
         setLoading(true);
         setError(null);
+        
+        // Obtener precios actuales
+        const currentData = await fetchPricesFromAPI();
+        if (currentData && currentData.items) {
+          const prices: {[key: string]: number} = {};
+          for (const [item, records] of Object.entries(currentData.items)) {
+            if (records.length > 0) {
+              prices[item] = records[0].price;
+            }
+          }
+          setCurrentPrices(prices);
+        }
         
         let data: RawData;
         try {
@@ -292,10 +305,20 @@ export default function HomePage() {
 
     fetchData();
 
-    // Mejorar el intervalo de actualización
+    // Modificar el intervalo de actualización para incluir precios actuales
     const updateInterval = setInterval(async () => {
       try {
         const newData = await fetchPricesFromAPI();
+        if (newData && newData.items) {
+          const prices: {[key: string]: number} = {};
+          for (const [item, records] of Object.entries(newData.items)) {
+            if (records.length > 0) {
+              prices[item] = records[0].price;
+            }
+          }
+          setCurrentPrices(prices);
+        }
+        
         if (!newData || !newData.items) {
           throw new Error('Datos inválidos recibidos de la API');
         }
@@ -634,6 +657,21 @@ export default function HomePage() {
         <h1>Dashboard de Precios del Juego</h1>
         <p>Análisis interactivo de la economía del juego con visualizaciones avanzadas</p>
       </header>
+
+      {/* Nuevo banner de precios actuales */}
+      <article className="current-prices-banner">
+        <header>
+          <h2>Precios Actuales del Mercado</h2>
+        </header>
+        <div className="prices-grid">
+          {Object.entries(currentPrices).map(([item, price]) => (
+            <div key={item} className="price-item">
+              <span className="item-name">{item.charAt(0).toUpperCase() + item.slice(1)}</span>
+              <span className="item-price">${price.toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      </article>
 
       <main>
         {/* --- Gráfico 1: Evolución de Precio Mejorado --- */}

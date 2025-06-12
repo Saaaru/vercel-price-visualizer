@@ -482,3 +482,71 @@ article {
     padding: 0.75rem;
   }
 }
+
+/* Estilos para el banner de precios actuales */
+.current-prices-banner {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  backdrop-filter: blur(10px);
+}
+
+.current-prices-banner header {
+  margin-bottom: 1rem;
+}
+
+.current-prices-banner h2 {
+  color: #e2e8f0;
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.prices-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.price-item {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid #475569;
+  border-radius: 6px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.price-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.item-name {
+  color: #94a3b8;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.item-price {
+  color: #10b981;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Animación para actualizaciones de precios */
+@keyframes priceUpdate {
+  0% {
+    background-color: rgba(16, 185, 129, 0.2);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.price-item.updated {
+  animation: priceUpdate 1s ease-out;
+}
