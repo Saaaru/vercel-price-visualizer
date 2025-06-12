@@ -1,7 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-
-// Estructura de datos para almacenar los precios
+// Interfaces
 interface PriceRecord {
   timestamp: string;
   price: number;
@@ -21,22 +18,19 @@ interface APIResponse {
   };
 }
 
-// Función para obtener el nombre del archivo semanal
-function getWeeklyFileName(): string {
+// Función para obtener el nombre de la clave semanal
+function getWeeklyKey(): string {
   const now = new Date();
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - now.getDay()); // Domingo
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 6); // Sábado
   
-  return `prices_${startOfWeek.toISOString().split('T')[0]}_to_${endOfWeek.toISOString().split('T')[0]}.json`;
+  return `prices_${startOfWeek.toISOString().split('T')[0]}_to_${endOfWeek.toISOString().split('T')[0]}`;
 }
 
 // Función para redondear a 2 decimales
 const roundToTwo = (num: number): number => {
-  // Primero multiplicamos por 100 para mover el punto decimal
-  // Luego usamos Math.round para redondear al entero más cercano
-  // Finalmente dividimos por 100 para volver a la posición original
   return Math.round(num * 100) / 100;
 };
 
@@ -71,38 +65,35 @@ export async function fetchPricesFromAPI(): Promise<RawData> {
   }
 }
 
-// Función para cargar datos del archivo semanal
+// Función para cargar datos del localStorage
 export async function loadWeeklyPrices(): Promise<RawData> {
   try {
-    const weeklyFileName = getWeeklyFileName();
-    const filePath = path.join(process.cwd(), 'public', 'weekly_data', weeklyFileName);
-    
-    // Crear directorio si no existe
-    const dirPath = path.join(process.cwd(), 'public', 'weekly_data');
-    if (!fs.existsSync(dirPath)) {
-      await fs.promises.mkdir(dirPath, { recursive: true });
+    if (typeof window === 'undefined') {
+      return { items: {} };
     }
+
+    const weeklyKey = getWeeklyKey();
+    const storedData = localStorage.getItem(weeklyKey);
     
-    // Si el archivo no existe, crear uno nuevo
-    if (!fs.existsSync(filePath)) {
+    if (!storedData) {
       return { items: {} };
     }
     
-    const fileContent = await fs.promises.readFile(filePath, 'utf-8');
-    return JSON.parse(fileContent);
+    return JSON.parse(storedData);
   } catch (error) {
     console.error('Error al cargar datos semanales:', error);
-    throw error;
+    return { items: {} };
   }
 }
 
-// Función para guardar datos en el archivo semanal
+// Función para guardar datos en localStorage
 export async function saveWeeklyPrices(newData: RawData): Promise<void> {
   try {
-    const weeklyFileName = getWeeklyFileName();
-    const filePath = path.join(process.cwd(), 'public', 'weekly_data', weeklyFileName);
-    
-    // Cargar datos existentes
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const weeklyKey = getWeeklyKey();
     const existingData = await loadWeeklyPrices();
     
     // Combinar datos existentes con nuevos datos
@@ -129,10 +120,9 @@ export async function saveWeeklyPrices(newData: RawData): Promise<void> {
     }
     
     // Guardar datos combinados
-    await fs.promises.writeFile(filePath, JSON.stringify(combinedData, null, 2));
+    localStorage.setItem(weeklyKey, JSON.stringify(combinedData));
   } catch (error) {
     console.error('Error al guardar datos semanales:', error);
-    throw error;
   }
 }
 
